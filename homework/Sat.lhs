@@ -4,7 +4,7 @@ author: Lucilia Figueiredo
 ---
 
 [saths]: Sat.hs
-[sat-sol]: Sat-sol.zip
+[sat-sol]: ../code/Sat-sol.zip
 [DPLL}: https://en.wikipedia.org/wiki/DPLL_algorithm
 
 For this module, please edit the file [Sat.hs][saths]. A solution for this homework will eventually be
@@ -46,6 +46,7 @@ We will also make other library functions available.
 > import Data.List as List
 > import Data.Maybe as Maybe
 > import Data.Char as Char
+> import Control.Applicative ((<|>))
 
 Finally, import definitions for QuickCheck.
 
@@ -116,9 +117,11 @@ The next few operations allow us to work with formulae, clauses, literals and va
 
 Formulae also form a Monoid:
 
+> instance Semigroup CNF where
+>     (Conj c1) <> (Conj c2) = Conj (c1 <> c2)
+> 
 > instance Monoid CNF where
->     mempty = Conj mempty
->     mappend (Conj c1) (Conj c2) = Conj (mappend c1 c2)
+>     mempty = Conj mempty   
 
 Variables are enumerable. However, only the first 26 will print nicely.
 
@@ -302,10 +305,9 @@ is correct, in the sense that it has the right length (2^n, where n is the numbe
 in the set) and all its elements are distinct.
 
 > prop_makeValuations :: CNF -> Bool
-> prop_makeValuations p = length valuations == 2 ^ length ss
->                      && allElementsDistinct valuations where
->    valuations = makeValuations ss
->    ss = vars p
+> prop_makeValuations p = length valuations == 2 ^ length ss && allElementsDistinct valuations
+>    where valuations = makeValuations ss
+>          ss = vars p
 
 > allElementsDistinct :: Eq a => [a] -> Bool
 > allElementsDistinct []     = True

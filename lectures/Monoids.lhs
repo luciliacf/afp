@@ -21,7 +21,7 @@ code you write, whatever the language, but you might not know it yet. By making 
 interesting new ways of constructing those lines of code. In particular, ways that are often easier to
 both read and write. So the following is an intro to monoids in Haskell.
 
-A monoid is a set with an associative binary operation `<>` for combining two elements of that set to make
+A monoid is a set with an associative binary operation `<>` for *combining* two elements of that set to make
 another element of the same set, together with an element \-\- `mempty` \-\- that when it\'s combined with other
 elements it leaves the other element unchanged. In other words, monoids obey the following equational rules:
 
@@ -33,7 +33,7 @@ A great example is lists. Given two lists, say `[1,2]` and `[3,4]`, you can join
 `++` to get `[1,2,3,4]`. There\'s also the empty list `[]`. Using `++` to combine `[]` with any list
 gives you back the same list, for example `[]++[1,2,3,4]==[1,2,3,4]`.
 
-In Haskell, the `Monoid` typeclass is a subclass of typeclass `Semigroup` The `Semigroup` typeclass
+In Haskell, the `Monoid` typeclass is a subclass of typeclass `Semigroup`. The `Semigroup` typeclass
 represents a set with an associative bynary operation `<>`. Semigroups have no other restrictions and
 are a very general typeclass.
 
@@ -93,7 +93,7 @@ the empty list is a left and right identity for append, and concatenation is an 
 >              (t1 <> t2) <> t3 ~?= t1 <> (t2 <> t3) -- associativity
 >             ]
 
-`Maybe` ca also be defined as an instance of `Monoid` as follows:
+`Maybe` can also be defined as an instance of `Monoid` as follows:
 
 ~~~~~{.haskell}
 instance Semigroup a => Semigroup (Maybe a) where
@@ -312,6 +312,97 @@ ghci> F.foldMap (\x -> [x]) exTree
 ~~~~~~~~~
 
 What\'s cool is that all of these tricks aren\'t limited to trees. They work on any instance of `Foldable`!
+
+
+Alternative
+============
+
+Looking at the mathematical definition of a *monoid*, we see that it says nothing about *combining*,
+but only state the properties that must be satisfied by operators `<>` and `mempty`. Now, it’s certainly
+true that combining things works well with this structure: `mempty` corresponding to having no things,
+and `m1 <> m2` saying that if I glom `m1` and `m2`’s stuff together, I can get a new thing containing
+all their stuff. But here’s an alternative intuition: `empty` corresponds to no choices at all,
+and `m1 <> m2` corresponding to a choice between `m1` and `m2`. Note that both interpretations obey the monoid
+laws: 
+
+ @ Having nothing at all and having no choice are both the identity.
+
+  * If I have no stuff and glom it together with some stuff, I end up with that same stuff again.
+  * If I have a choice between no choice at all (something impossible) and some other choice, I have
+    to pick the other (possible) choice.
+
+ @ Glomming collections together and making a choice are both associative.
+
+  * If I have three collections of things, it doesn’t matter if I glom the first two together and then
+    the third, or the last two together and then the first; either way, I end up with the same total glommed collection.
+
+  * If I have a choice between three things, it doesn’t matter if I (a) first choose between
+    first-or-second and third and then, if I need to, between first and second, or (b) first
+    choose between first and second-or-third and then, if I need to, between second and third.
+    Either way, I can pick what I want.
+
+*Note*: It’s important to remember that `<>` need not be commutative: it’s perfectly possible that
+`m1 <> m2` $\not=$ `m2 <> m1`.
+
+The `Alternative` type class is another type class that represents objects which (a) are applicative
+functors, and (b) when instantiated at a type, have a value and a binary function on them which follow
+the monoid rules -- it intends to capture the *choice* interpretation for the monoidal operations.
+
+~~~~~~~ {.haskell}
+class Applicative f => Alternative f where
+  -- | The identity of '<|>'
+  empty :: f a
+  
+  -- | An associative binary operation
+  (<|>) :: f a -> f a -> f a
+  
+  -- | One or more. The definition of some is optional
+  some :: f a -> f [a]
+  some v = some_v
+    where many_v = some_v <|> pure []
+          some_v = liftA2 (:) v many_v
+
+  -- | Zero or more. The definition is many is optional
+  many :: f a -> f [a]
+  many v = many_v
+    where many_v = some_v <|> pure []
+          some_v = liftA2 (:) v many_v
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As an example, `Maybe` is defined as an instance of `Alternative` as follows:
+
+~~~~~ {.haskell}
+instance Alternative Maybe where
+  empty               = Nothing
+
+  Nothing <|> m = m
+  Just x  <|> _ = Just x 
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Note that the above definition is equivalent to the following:
+
+~~~~~~~~~ {.haskell} 
+  Nothing <|> Nothing = Nothing -- 0 results + 0 results = 0 results
+  Just x  <|> Nothing = Just x  -- 1 result  + 0 results = 1 result
+  Nothing <|> Just x  = Just x  -- 0 results + 1 result  = 1 result
+  Just x  <|> Just y  = Just x  -- 1 result  + 1 result  = 1 result:
+~~~~~~~~~~~~~~~~~~~~~~
+
+List is also an instance of the `Alternative` typeclass:
+
+~~~~~~~~~ {.haskell}
+instance Alternative [] where
+  empty = []
+  (<|>) = (++) -- length xs + length ys = length (xs ++ ys)
+~~~~~~~~~~~~~~~~~~
+
+Intuitively, lists are used here as representing nondeterministic choice: if I combine two values of type
+`[a]` with `<|>`, that corresponds to nondeterministically picking either an action from the left or an action
+from the right. But sometimes, you’re going to have no possible actions on one side \—\- and that’s fine. Similarly,
+if we consider parsers, `<|>` represents a parser which parses either what’s on the left or what’s on the right
+(it *picks*). And if you have a parser which always fails, that ends up being an identity: if you pick it, you
+immediately reject that pick and try the other one.
+
 
 Reading
 --------

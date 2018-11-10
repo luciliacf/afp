@@ -19,8 +19,6 @@ import Control.Applicative ((<|>))
 import Test.HUnit (Test(..), (~:), (~?=), runTestTT, assertBool)
 import Test.QuickCheck
 
-
-
 ---------------------------------------------------------------------------
 -- Basic types
 
@@ -85,15 +83,20 @@ allVars = [ vA .. ]
 
 -------------------------------------------------------------------------
 
--- | The number of times each variable appears in the formula
+-- | The list of variables in a formula
+listVars :: CNF -> [Var]
+listVars (Conj l) = map var $ concat $ map lits l
+
+-- | The number of times each variable appears in the formula p
 countVars :: CNF -> Map Var Int
-countVars = undefined
-
-
+countVars p = foldr countV Map.empty (listVars p)
+    where countV v vmap = case vmap Map.!? v of
+                            Nothing -> Map.insert v 1 vmap
+                            Just n  -> Map.adjust (+1) v vmap
 
 -- | All of the variables that appear anywhere in the formula, in sorted order
 vars :: CNF -> [Var]
-vars = undefined
+vars = sort . nub . listVars
 
 testCountVars :: Test
 testCountVars = "countVars" ~:
@@ -105,17 +108,17 @@ testVars = "vars" ~:
 
 -------------------------------------------------------------------------
 
-genVar      :: Int -> Gen Var
-genVar    n = elements (take (abs n + 1) allVars)
+genVar :: Int -> Gen Var
+genVar n = elements (take (abs n + 1) allVars)
 
-genLit      :: Int -> Gen Lit
-genLit    n = Lit <$> arbitrary <*> genVar n
+genLit :: Int -> Gen Lit
+genLit n = Lit <$> arbitrary <*> genVar n
 
-genClause   :: Int -> Gen Clause
+genClause :: Int -> Gen Clause
 genClause n = Clause <$> listOf (genLit n)
 
-genCNF      :: Int -> Gen CNF
-genCNF     n = Conj <$> listOf (genClause n)
+genCNF :: Int -> Gen CNF
+genCNF n = Conj <$> listOf (genClause n)
 
 defaultNumVariables :: Int
 defaultNumVariables = 5
@@ -137,7 +140,6 @@ instance Arbitrary Clause where
 instance Arbitrary CNF where
    arbitrary = fmap Conj arbitrary
    shrink (Conj x) = [Conj x' | x' <- shrink x]
-
 
 
 ---------------------------------------------------------------------
@@ -164,27 +166,63 @@ litSatisfied a (Lit b v) = Map.member v a && (b == a Map.! v)
 satisfiedBy :: CNF -> Valuation -> Bool
 satisfiedBy p a = all (any (litSatisfied a) . lits) (clauses p)
 
+----- some example formulas ---------------------------------------
 validFormula :: CNF
 validFormula = Conj []
 
 anotherUnsatFormula :: CNF
 anotherUnsatFormula = Conj [ Clause [] ]
 
+exampleFormula2 :: CNF
+exampleFormula2 = Conj [Clause [Lit False vA, Lit True vB, Lit True vC],
+                        Clause [Lit True vA, Lit True vC, Lit True vD],
+                        Clause [Lit True vA, Lit True vC, Lit False vD],
+                        Clause [Lit True vA, Lit False vC, Lit True vD],
+                        Clause [Lit True vA, Lit False vC, Lit False vD],
+                        Clause [Lit False vB, Lit False vC, Lit True vD],
+                        Clause [Lit False vA, Lit True vB, Lit False vC],
+                        Clause [Lit False vA, Lit False vB, Lit True vC]]
+
+exampleValuation2 :: Valuation
+exampleValuation2 = Map.fromList [(vA, True), (vB, True), (vC, True), (vD, True)]
+
+-- unsatisfiable
+exampleFormula3 :: CNF
+exampleFormula3 = Conj [Clause [Lit False vA], Clause []]
+
+exampleFormula4 :: CNF
+exampleFormula4 = Conj [Clause [Lit False vA], Clause [Lit True vA, Lit False vA]]
+
+exampleValuation4 :: Valuation
+exampleValuation4 = Map.fromList [(vA, False) ]
+
+exampleFormula5 :: CNF
+exampleFormula5 = Conj [Clause [Lit True vA, Lit False vB], Clause [Lit False vA],
+                        Clause [Lit True vB], Clause [Lit True vB, Lit True vC, Lit True vD] ]
+
+exampleFormula6 :: CNF
+exampleFormula6 = Conj [Clause [Lit True vA, Lit False vB], 
+                        Clause [Lit True vB, Lit True vC, Lit True vD] ]
+
+---------------------------------------------------------------
+
 testSatisfiedBy :: Test
 testSatisfiedBy = "satisfiedBy" ~:  TestList
  [ "exampleFormula" ~:
     assertBool "" (exampleFormula `satisfiedBy` exampleValuation),
-   "another example" ~:
-    assertBool "" (error "ADD your own test case here") ]
+   "exampleFormula2" ~:
+    assertBool "" (exampleFormula2 `satisfiedBy`exampleValuation2),
+   "exampleFormula4" ~: 
+    assertBool "" (exampleFormula4 `satisfiedBy` exampleValuation4) ]
 
 prop_unSatBy :: Valuation -> Bool
 prop_unSatBy v = not (unSatFormula `satisfiedBy` v)
 
 extend :: Var -> Bool -> Valuation -> Valuation
-extend = undefined
+extend = Map.insert 
 
 value :: Var -> Valuation -> Maybe Bool
-value = undefined
+value var valuation = valuation Map.!? var
 
 ---------------------------------------------------------------------------
 -- Simple SAT Solver
@@ -192,7 +230,8 @@ value = undefined
 type Solver = CNF -> Maybe Valuation
 
 makeValuations :: [Var] -> [Valuation]
-makeValuations = undefined
+makeValuations []     = [ Map.empty ]
+makeValuations (v:vs) = [ extend v b vmap | b <- [True,False], vmap <- makeValuations vs ] 
 
 prop_makeValuations :: CNF -> Bool
 prop_makeValuations p = length valuations == 2 ^ length ss && allElementsDistinct valuations
@@ -205,7 +244,10 @@ allElementsDistinct (x:xs) = notElem x xs &&
                              allElementsDistinct xs
 
 sat0 :: Solver
-sat0 p = undefined
+sat0 p = satVal p (makeValuations (vars p))
+  where satVal p []       = Nothing
+        satVal p (va:vas) = if p `satisfiedBy` va then Just va
+                            else satVal p vas 
 
 prop_satResultSound :: Solver -> Int -> Property
 prop_satResultSound solver i =
@@ -226,39 +268,52 @@ prop_satResult solver p = case solver p of
 -- Instantiation
 
 instantiate :: CNF -> Var -> Bool -> CNF
-instantiate = undefined
+instantiate p v b = Conj $ foldr instClauses [] (clauses p)
+   where instClauses c@(Clause []) _  = [c]
+         instClauses c@(Clause ls) cs = case instLits ls of
+                                          Nothing  -> cs
+                                          Just ls' -> (Clause ls'):cs 
+         instLits = foldr f (Just []) 
+               where f l@(Lit b' v') r
+                       | v'==v && b'==b      = Nothing
+                       | v'==v && b'== not b = r
+                       | otherwise           = fmap (l:) r
 
+         
 prop_instantiate :: CNF -> Var -> Bool
-prop_instantiate = undefined
+prop_instantiate p v = prop_satResult sat0 (instantiate p v True) || prop_satResult sat0 (instantiate p v False)
 
--- First, check if the formula is either satisfied (returning an empty valuation if so)
--- or falsified (returning `Nothing`).
---
--- Otherwise, choose one of the variables in the formula, instantiate it with both `True` and `False`,
--- and see if either of the resulting formulae are satisfiable. If so, add an appropriate binding
--- for the variable we instantiated to the resulting `Valuation` and return it.
 sat1 :: Solver
-sat1 = sat where
-  sat = undefined
-
+sat1 p = sat p
+  where sat (Conj [])          = Just Map.empty
+        sat (Conj [Clause []]) = Nothing
+        sat p                  = fmap (Map.insert v True)  (sat (instantiate p v True)) <|>
+                                 fmap (Map.insert v False) (sat (instantiate p v False))
+                                    where (v:vs) = vars p
 prop_sat1 :: CNF -> Bool
 prop_sat1 s = isJust (sat1 s) == isJust (sat0 s)
 
 ---------------------------------------------------------------------------
 -- Unit propagation
 
-simplifyUnitClause :: CNF -> Maybe (CNF, Var, Bool)
-
 -- 1) If (simplifyUnitClause s) returns Nothing, then there
 --    are no remaining unit clauses in s.
--- 2) If it returns (Just s'), then s' is satisfiable iff s is.
+-- 2) If it returns (Just s', v, b), then s' is satisfiable iff s is.
 prop_simplifyUnitClause :: CNF -> Bool
-prop_simplifyUnitClause = undefined
+prop_simplifyUnitClause p = case simplifyUnitClause p of
+                              Nothing       -> unitClauses p == []
+                              Just (p',v,b) -> isJust (sat0 p) == isJust (sat0 p')
 
+-- returns the list of unit clauses of the given formula
 unitClauses :: CNF -> [Lit]
-unitClauses = undefined
+unitClauses (Conj l) = foldr getUnitClause [] l
+   where getUnitClause (Clause [Lit b v]) r = (Lit b v):r
+         getUnitClause _                  r = r
 
-simplifyUnitClause = undefined
+simplifyUnitClause :: CNF -> Maybe (CNF, Var, Bool)
+simplifyUnitClause p = case unitClauses p of
+                         []             -> Nothing
+                         ((Lit b v):ls) -> Just (instantiate p v b, v, b)
 
 -- If the formula is either satisfied or falsified, return an appropriate answer as before.
 --
@@ -267,9 +322,16 @@ simplifyUnitClause = undefined
 -- add a binding for the variable that was eliminated when we simplified the unit clause and return it.
 --
 -- Otherwise, instantiate one of the variables in the formula and recurse, as before.
+
 sat2 :: Solver
-sat2 = sat where
-  sat = undefined
+sat2 = sat
+  where sat (Conj [])          = Just Map.empty
+        sat (Conj [Clause []]) = Nothing
+        sat p                  = case simplifyUnitClause p of
+                                   Nothing       -> fmap (Map.insert v True)  (sat (instantiate p v True)) <|>
+                                                    fmap (Map.insert v False) (sat (instantiate p v False))
+                                                       where v = head (vars p)
+                                   Just (p',v,b) -> fmap (Map.insert v b) (sat p')  
 
 prop_sat2 :: CNF -> Bool
 prop_sat2 s = isJust (sat2 s) == isJust (sat0 s)
@@ -277,25 +339,42 @@ prop_sat2 s = isJust (sat2 s) == isJust (sat0 s)
 ---------------------------------------------------------------------------
 -- Pure literal elimination
 
-simplifyPureLiteral :: CNF -> Maybe (CNF, Var, Bool)
-
 -- 1) If (simplifyPureLiteral s) returns Nothing, then there
 --    are no remaining pure literals in s
 -- 2) If it returns (Just s'), then s' is satisfiable iff s is
 prop_simplifyPureLiteral :: CNF -> Bool
-prop_simplifyPureLiteral = undefined
+prop_simplifyPureLiteral p = case simplifyPureLiteral p of
+                               Nothing       -> pureLiterals p  == []
+                               Just (p',v,b) -> isJust (sat1 p) == isJust (sat1 p')
 
-
+fLits :: CNF -> [Lit]
+fLits (Conj l) = foldr ((++) . lits) [] l
 
 pureLiterals :: CNF -> [(Var,Bool)]
-pureLiterals = undefined
+pureLiterals p = (Set.toList . snd) $ foldr f (Set.empty, Set.empty) (fLits p)
+   where f :: Lit -> (Set Var, Set (Var,Bool)) -> (Set Var, Set (Var,Bool))
+         f (Lit b v) (visited, pure)
+            | not (Set.member v visited) = (Set.insert v visited, Set.insert (v,b) pure)
+            | Set.member (v, not b) pure = (visited, Set.delete (v, not b) pure)
+            | otherwise                  = (visited, pure)
+            
+simplifyPureLiteral :: CNF -> Maybe (CNF, Var, Bool)
+simplifyPureLiteral p = case pureLiterals p of
+                         []         -> Nothing
+                         ((v,b):ps) -> Just (instantiate p v b, v, b)
 
-simplifyPureLiteral = undefined
 
 -- The final DPLL algorithm:
 dpll :: Solver
-dpll = sat where
-  sat = undefined
+dpll = sat
+  where sat (Conj [])          = Just Map.empty
+        sat (Conj [Clause []]) = Nothing
+        sat p                  = case (simplifyUnitClause p <|> simplifyPureLiteral p) of
+                                   Nothing       -> fmap (Map.insert v True)  (sat (instantiate p v True)) <|>
+                                                    fmap (Map.insert v False) (sat (instantiate p v False))
+                                                       where v = head (vars p)
+                                   Just (p',v,b) -> fmap (Map.insert v b) (sat p')  
+
 
 prop_dpll :: CNF -> Bool
 prop_dpll s = isJust (dpll s) == isJust (sat0 s)

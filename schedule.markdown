@@ -21,7 +21,7 @@ xx/xx     Lec 4                       [User-defined datatypes][datatypes]
 xx/xx     DList                       [Exercise: Difference Lists][diffLists]
 xx/xx     KataReview              [Exercise: Kata code review][kataReview]
 xx/xx     Classes                   [Type Classes][typeclasses]
-               Hw 4                       [Homework 4][hw04]
+               Hw 4                       [Homework 04][hw04]
 xx/xx     Functors                  [Functors and Applicatives][functors]
                Hw 5                       [Homework 05][hw05] 
 xx/xx     Monoids                  [Monoids and Foldables][mono]
@@ -36,7 +36,7 @@ xx/xx     Persistent                [A Persistent Set Interface][persistent]
 xx/xx     RedBlack Trees        [Red Black Trees][RBtree]
 xx/xx     Monads2                 [The State Monad][STmonad]
 xx/xx     STMonad                 [The ST and IO Monads][STIOmonads]
-xx/xx     ReandomGen           [Exercise: Using the State Monad for Generation][STRan]
+xx/xx     RandomGen            [Exercise: Using the State Monad for Generation][STRan]
 
 
 [instalation]: ./lectures/instalation.html
