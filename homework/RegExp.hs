@@ -13,8 +13,6 @@ import qualified Data.Map as Map
 import Control.Applicative(Alternative(..))
 import Control.Monad (ap, liftM2)
 
-
-
 import Test.HUnit hiding (State)
 import Test.QuickCheck
 import Test.QuickCheck.Function
@@ -105,6 +103,9 @@ namePat = Mark "first" (plus letter) `Seq` Star white `Seq` Mark "last" (plus le
 wordsPat :: RegExp
 wordsPat = Star (Mark "word" (plus lower) `Seq` Star white)
 
+nestedPat :: RegExp
+nestedPat = Mark "word" ((plus lower) `Seq` (Mark "b" (char 'b')) `Seq` (plus lower))
+
 testPat :: Test
 testPat = TestList [
     patAccept boldHtmlPat "<b>cis552" ~?= Nothing,
@@ -115,7 +116,9 @@ testPat = TestList [
     patAccept namePat "Haskell  Curry" ~?=
         Just (Map.fromList [("first",["Haskell"]),("last",["Curry"])]),
     patAccept wordsPat "a    b c   d e" ~?=
-        Just (Map.fromList [("word",["a","b","c","d","e"])])
+        Just (Map.fromList [("word",["a","b","c","d","e"])]),
+    patAccept nestedPat "acdbef" ~?=
+        Just (Map.fromList [("b", ["b"]),("word",["acdbef"])])
   ]
 
 type Match = Map String [String]
@@ -140,7 +143,16 @@ nullable _ = error "nullable: unimplemented"
 deriv :: RegExp -> Char -> RegExp
 deriv = error "deriv: unimplemented"
 
-
+testMatch :: Test
+testMatch = TestList [
+   not (match Void "a") ~? "nothing is void",
+   not (match Void "") ~? "really, nothing is void",
+   match Empty "" ~? "accept Empty true",
+   not (match Empty "a") ~? "not accept Empty",
+   match lower "a" ~? "accept lower",
+   not (match lower "A") ~? "not accept lower",
+   match boldHtml "<b>cis552</b>!</b>" ~? "cis552!",
+   not (match boldHtml "<b>cis552</b>!</b") ~? "no trailing" ]
 
 -- (d)
 

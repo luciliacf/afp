@@ -73,7 +73,6 @@ avlFirst = error "first: unimplemented"
 avlFinal :: AVL a -> Maybe a
 avlFinal = error "avlFinal: unimplemented"
  
-
 testFirst :: Test
 testFirst = TestList [ "first" ~: first seq1 ~=? Just 7,
                        "final" ~: final seq1 ~=? Just 5]
@@ -124,7 +123,11 @@ height Empty = 0
 height (Single x) = 0
 height (Branch _ k s1 s2) = k
 
-
+-- the balance factor
+bf :: AVL a -> Int
+bf (Branch _ _ l r) = height l - height r
+bf (Single _) = 0
+bf Empty = 0
 
 avlInsert :: Int -> a -> AVL a -> Maybe (AVL a)
 avlInsert = undefined
@@ -145,13 +148,13 @@ instance (Show a, Arbitrary a) => Arbitrary (AVL a) where
     shrink _  = undefined
 
 prop_length :: AVL Int -> Bool
-prop_length xs = count xs == count xs where
+prop_length xs = length xs == count xs where
    count Empty = 0
    count (Single x) = 1
    count (Branch j _ l r) = count l + count r
 
 prop_height :: AVL Int -> Bool
-prop_height xs = count xs == count xs where
+prop_height xs = height xs == count xs where
    count Empty = 0
    count (Single x) = 0
    count (Branch _ k l r) = 1 + max (height l) (height r)
@@ -161,12 +164,6 @@ prop_balanced Empty = True
 prop_balanced (Single x) = True
 prop_balanced t@(Branch _ _ l r) =
      bf t >= -1 && bf t <= 1 && prop_balanced l && prop_balanced r
-
--- the balance factor
-bf :: AVL a -> Int
-bf (Branch _ _ l r) = height l - height r
-bf (Single _) = 0
-bf Empty = 0
 
 prop_AVL :: AVL Int -> Property
 prop_AVL x = counterexample "length"   (prop_length x)   .&&.

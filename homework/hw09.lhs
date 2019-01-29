@@ -2,41 +2,41 @@
 title: Homework 09: State Monad and Applicative Parsing
 ---
 
-[parsinghs]: Parsing.zip
-[parserhs]: Parser.hs
-[parsercombhs]: ParserCombinators.hs
-[mainhs]: Main.hs
-[tesths]: Test.hs
-[statehs]: State.hs
+[parsinghs]: ../code/Parsing.zip
 [testimp]: [test.imp]
 [factimp]: [fact.imp]
 [absimp]: [abs.imp]
 [timesimp]: [times.imp]
 
 
-This homework provides practice with the state monad and applicative parsing combinators
-that we developed in class by developing and implementing a small, imperative programming language.
+This homework provides practice with the state monad and applicative parsing
+combinators that we developed in class by developing and implementing a small,
+imperative programming language.
 
 > {-# OPTIONS_GHC -fwarn-tabs -fwarn-incomplete-patterns -fdefer-type-errors #-}
 > module Main where
 
 Before starting this assignment:
 
-Download a [zip file][parsingzip] containing all of the source files that you need for this assignment.
+Download a [zip file][parsingzip] containing all of the source files that you need
+for this assignment.
 
-You will need to edit [Main.hs][mainhs] and [Tests.hs][tesths], the plain-Haskell version of the assignment files.
+You will need to edit `Main.hs` and `Tests.hs`, the plain-Haskell version of the
+assignment files.
 
-Remember that, as you complete the assignment, you should be testing. All of the test cases and
-properties are in [Tests.hs][tesths]. You should edit this file to add your own testing code. The test
-cases will also help specify parts of the problems.
+Remember that, as you complete the assignment, you should be testing.
+All of the test cases and properties are in `Tests.hs`. You should edit this
+file to add your own testing code. The test cases will also help specify parts
+of the problems.
 
-Read over the `.imp` files for this assignment, which are sample files for a simple imperative
-programming language (the WHILE language). Take a look at these files to get an idea of the
-concrete syntax of the WHILE language.
+Read over the `.imp` files for this assignment, which are sample files for a
+simple imperative programming language (the WHILE language). Take a look at
+these files to get an idea of the concrete syntax of the WHILE language.
 
       [test.imp][testimp], [fact.imp][factimp], [abs.imp][absimp], [times.imp][timesimp].
 
-Note, although the concrete syntax looks like C or Java, it is not exactly the same as those languages.
+Note, although the concrete syntax looks like C or Java, it is not exactly the same
+as those languages.
 
 This homework assignment draws on many libraries. So that you can tell where to look for the
 definitions, we will either import them explicitly (as in `Applicative`/`Monad` below) or qualify
@@ -51,14 +51,14 @@ the imports (as in `Data.Map` and `Text.PrettyPrint`). If you want to use more f
 > import Control.Monad ()
 
 This assignment uses the State Monad library that we developed in the lecture notes.
-The relevant definitions are in the file [State.hs][statehs]. Operations such as get and put are
+The relevant definitions are in the file `State.hs`. Operations such as get and put are
 imported as `S.get` and `S.put`.
 
 > import State (State)
 > import qualified State as S
 
 This assignment also uses the parsing library from the lecture notes. The relevant definitions
-are in the files [Parser.hs][parserhs] and [ParserCombinators.hs][parsercombhs].
+are in the files `Parser.hs` and `ParserCombinators.hs`.
 
 > import qualified Parser as P
 > import qualified ParserCombinators as P
@@ -68,11 +68,9 @@ are in the files [Parser.hs][parserhs] and [ParserCombinators.hs][parsercombhs].
 
 
 An Interpreter for WHILE
---------------------------
+=========================
 
 In this problem, you will use monads to build an evaluator for the simple imperative language.
-For example, the evaluator should compute that
-
 In this language, we will represent program variables as strings:
 
 > type Variable = String
@@ -119,17 +117,18 @@ and Constant values are either integers or booleans
 >   | BoolVal Bool
 >   deriving (Eq, Show)
 
-We will represent the store i.e. the machine's memory, as an associative map from `Variable` to `Value`:
+We will represent the store i.e\. the machine\'s memory, as an associative
+map from `Variable` to `Value`:
 
 > type Store = Map Variable Value
 
-Note: we don\'t have exceptions (yet!), so if a variable is not found (eg because it is not initialized)
-simply return the value 0. In the future, we will add this as a case where exceptions are thrown
-(the other case being type errors.)
+*Note*: we don\'t have exceptions (yet!), so if a variable is not found (eg because
+it is not initialized) simply return the value 0. In the future, we will add this as
+a case where exceptions are thrown (the other case being type errors.)
 
-**Test Programs**
+Test Programs
+---------------
 
-> -------------------------------------------------------------------------
 > -- Here are some test programs. You can ignore the 80-column limit for this part
 > -- of the file.
 > -- test.imp
@@ -165,14 +164,16 @@ simply return the value 0. In the future, we will add this as a case where excep
 >                 While (Op (Var "x") Gt (Val (IntVal 0))) (Block [Assign "z" (Op (Var "z") Plus (Var "y")),
 >                                                                  Assign "x" (Op (Var "x") Minus (Val (IntVal 1)))])]
 
-**Expression Evaluator**
+
+Expression Evaluator
+---------------------
 
 First, write a function
 
 > evalE :: Expression -> State Store Value
 
 that takes as input an expression and returns a state-transformer that yields a `Value`.
-(Yes, right now, the transformer doesn't really transform the world, but we will use the
+(Yes, right now, the transformer doesn\'t really transform the world, but we will use the
 monad structure later.)
 
 Again, we don\'t have any exceptions or typechecking, so the interpretation of any
@@ -184,7 +185,9 @@ Your expression evaluator should be total. For any input it should produce some 
 > evalE (Val _)    = error "evalE: unimplemented"
 > evalE (Op _ _ _) = error "evalE: unimplemented"
 
-**Statement Evaluator**
+
+Statement Evaluator
+---------------------
 
 Next, write a function
 
@@ -218,7 +221,7 @@ block from the world store. Hint: You may want to use the following library func
       execState :: State s a -> s -> s
 ~~~~~~~
 
-When you are done with the above, the following function will "run" a block of statements
+When you are done with the above, the following function will \"run\" a block of statements
 starting with the empty store (where no variable is initialized). Running the program should
 print the value of all variables at the end of execution.
 
@@ -229,15 +232,15 @@ print the value of all variables at the end of execution.
 Your interpreter should pass the tests in Tests.hs for evaluating the sample test files.
 Make sure to add your own tests.
 
-A Pretty Printer for WHILE
---------------------------
+A Pretty Printer for WHIL
+==========================
 
-The derived Show instances for the datatypes above are pretty hard to read, especially when
+The derived `Show` instances for the datatypes above are pretty hard to read, especially when
 programs get long. Really, who wants to read this...
 
       Block [ Assign "n" (Val (IntVal 5)), Assign "f" (Val (IntVal 1)), While (Op (Var "n") Gt (Val (IntVal 0))) (Block [Assign "x" (Var "n"), Assign "z" (Var "f"), While (Op (Var "x") Gt (Val (IntVal 1))) (Block [Assign "f" (Op (Var "z") Plus (Var "f")), Assign "x" (Op (Var "x") Minus (Val (IntVal 1)))]), Assign "n" (Op (Var "n") Minus (Val (IntVal 1)))]) ]
 
-instead of this...
+instead of this\.\.\.
 
      n = 5; f = 1; while (n > 0) { x = n; z = f; while (x > 1) { f = z + f; x = x - 1; }; n = n - 1; }
 
@@ -256,23 +259,23 @@ or even this?
    }
 
 A *pretty printer* is a function that converts an abstract syntax tree into a readable representation
-of the concrete syntax. Your job on this problem is to use the [HughesPJ](http://hackage.haskell.org/package/pretty)
+of the concrete syntax. Your job on this problem is to use the
+[HughesPJ](http://hackage.haskell.org/package/pretty)
 library to develop a pretty printer for WHILE.
 
 For background reading, [Ch. 5](http://book.realworldhaskell.org/read/writing-a-library-working-with-json-data.html)
-of Read World Haskell goes through the design of a library, called "Prettify", which is a simplified
+of Read World Haskell goes through the design of a library, called \"Prettify\", which is a simplified
 version of the HughesPJ library. Note that most of the definitions
 in the library (such as char, text, etc.) are imported qualified as PP.char so that they do not
 conflict with the other parts of this assignment.
 
 The HughesPJ library provides the following to assist in the development of pretty printers:
 
-  * An abstract type Doc of "pretty documents" that know how to lay themselves out prettily.
-    We can use this type to define a class of of types that support pretty printing---those that
+  * An abstract type Doc of \"pretty documents\" that know how to lay themselves out prettily.
+    We can use this type to define a class of of types that support pretty printing \-\- those that
     define a function mapping any value of that type to a suitable Doc.
     
 > class PP a where
-
 >   pp :: a -> Doc
 
   * Primitive documents and operations for constructing Docs from primitive types, such as
@@ -290,7 +293,7 @@ The HughesPJ library provides the following to assist in the development of pret
   -- a ';' character
   semi :: Doc
 
-    For example, we can use these functions to define the Bop instance of the PP class.
+    For example, we can use these functions to define the `Bop` instance of the `PP` class.
     This instance converts each binary operator into a document.
 
 > instance PP Bop where
@@ -338,9 +341,9 @@ The HughesPJ library provides the following to assist in the development of pret
 > indented :: PP a => a -> String
 > indented = PP.render . pp
 
-Your job is to fill in the definitions of pp for Values, Expressions, Statements and Blocks.
+Your job is to fill in the definitions of `pp` for `Value`s, `Expression`s, `Statement`s and `Block`s.
 Note that you should let the pretty printer make decisions about line breaks (i.e. `oneLine` vs.
-`indented` above). To do this you should never insert explicit newline and space characters ---
+`indented` above). To do this you should never insert explicit newline and space characters \-\-
 use the combinators above instead.
 
 > instance PP Value where

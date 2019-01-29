@@ -1,7 +1,8 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-import           Data.Monoid (mappend)
-import           Hakyll
+import Data.Monoid (mappend)
+import Hakyll
+import Text.Pandoc.Options
 --------------------------------------------------------------------------------
 
 main :: IO ()

@@ -5,7 +5,7 @@ module RegExp where
 import Prelude hiding(either)
 
 import Data.Set (Set)
-import qualified Data.Set as Set (singleton, fromList)
+import qualified Data.Set as Set (singleton, fromList, member)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -71,17 +71,25 @@ plus pat = pat `Seq` Star pat
 -- all decompositions of a string into two different pieces
 --     split "abc" == [("","abc"),("a","bc"),("ab","c"),("abc","")]
 split :: [a] -> [([a], [a])]
-split = error "split: unimplemented"
+split xs = foldr f [] [0..length xs]
+   where f n ys = splitAt n xs : ys
 
 -- all decompositions of a string into multi-part (nonempty) pieces
 -- parts "abc" = [["abc"],["a","bc"], ["ab","c"], ["a","b","c"]]
 parts :: [a] -> [[[a]]]
-parts = error "parts: unimplemented"
+parts []  = [[]]
+parts [x] = [[[x]]]
+parts xs  = [ zss <> [ys]  | (zs,ys) <- init $ split xs, zss <- parts zs]
 
 accept :: RegExp -> String -> Bool
-
-accept (Mark _ r)  s = accept r s
-accept _           _ = error "accept: finish me"
+accept (Mark _ r)   s = accept r s
+accept (Char set) [c] = Set.member c set
+accept (Char _)     _ = False
+accept (Alt r1 r2)  s = accept r1 s || accept r2 s
+accept (Seq r1 r2)  s = any (\(s1,s2) -> accept r1 s1 && accept r2 s2) (split s)    
+accept (Star r)     s = null s || any (all (accept r)) (parts s)     
+accept Empty        s = null s      
+accept Void         _ = False    
 
 testAccept :: Test
 testAccept = TestList [
@@ -105,6 +113,9 @@ namePat = Mark "first" (plus letter) `Seq` Star white `Seq` Mark "last" (plus le
 wordsPat :: RegExp
 wordsPat = Star (Mark "word" (plus lower) `Seq` Star white)
 
+nestedPat :: RegExp
+nestedPat = Mark "word" ((plus lower) `Seq` (Mark "b" (char 'b')) `Seq` (plus lower))
+
 testPat :: Test
 testPat = TestList [
     patAccept boldHtmlPat "<b>cis552" ~?= Nothing,
@@ -115,37 +126,77 @@ testPat = TestList [
     patAccept namePat "Haskell  Curry" ~?=
         Just (Map.fromList [("first",["Haskell"]),("last",["Curry"])]),
     patAccept wordsPat "a    b c   d e" ~?=
-        Just (Map.fromList [("word",["a","b","c","d","e"])])
+        Just (Map.fromList [("word",["a","b","c","d","e"])]),
+    patAccept nestedPat "acdbef" ~?=
+        Just (Map.fromList [("b", ["b"]),("word",["acdbef"])])
   ]
 
 type Match = Map String [String]
 
 patAccept :: RegExp -> String -> Maybe Match
-patAccept = error "patAccept: unimplemented"
-
-
+patAccept r s = patAc r s (Just Map.empty)
+  where patAc :: RegExp -> String -> Maybe Match -> Maybe Match
+        patAc (Mark tag r) s m = Map.alter f tag <$> patAc r s m
+                                 where f Nothing   = Just (s:[])
+                                       f (Just ls) = Just (s:ls)
+        patAc (Alt r1 r2)  s m = patAc r1 s m <|> patAc r2 s m
+        patAc (Seq r1 r2)  s m = foldr ((<|>) . f) Nothing (split s)
+                                 where f (s1,s2) = patAc r2 s2 (patAc r1 s1 m)
+        patAc (Star r)     s m = if null s then m else Nothing
+                                 <|> foldr ((<|>) . foldr (patAc r) m) Nothing (parts s)
+        patAc r@(Char set) s m = if accept r s then m else Nothing
+        patAc Empty        s m = if null s then m else Nothing     
+        patAc Void         _ _ = Nothing    
 
 -- (c)
 
 match :: RegExp -> String -> Bool
-match r s = nullable (foldl deriv r s)
+match r s = nullable (foldl (deriv . optimize)  r s)
+
+-- | optimize r returs an optimized regular expression equivalent to r
+optimize :: RegExp -> RegExp
+optimize (Star r)    = rStar r
+optimize (Seq r1 r2) = rSeq r1 r2
+optimize (Alt r1 r2) = rAlt r1 r2
+optimize r           = r
 
 -- | `nullable r` return `True` when `r` matches the empty string
 nullable :: RegExp -> Bool
-nullable _ = error "nullable: unimplemented"
+nullable Empty       = True
+nullable Void        = False
+nullable (Char s)    = False
+nullable (Star _)    = True
+nullable (Seq r1 r2) = nullable r1 && nullable r2
+nullable (Alt r1 r2) = nullable r1 || nullable r2
+nullable (Mark _ r)  = nullable r
 
 -- |  Takes a regular expression `r` and a character `c`,
 -- and computes a new regular expression that accepts word `w` if `cw` is
 -- accepted by `r`.
 deriv :: RegExp -> Char -> RegExp
-deriv = error "deriv: unimplemented"
+deriv r@(Char set) c = if Set.member c set then Empty else Void
+deriv (Alt r1 r2)  c = Alt (deriv r1 c) (deriv r2 c)
+deriv (Seq r1 r2)  c = (deriv r1 c `Seq` r2) `Alt` (if nullable r1 then deriv r2 c else Void)     
+deriv (Star r)     c = deriv r c `Seq` Star r     
+deriv Empty        _ = Void     
+deriv Void         _ = Void    
+deriv (Mark _ r)   c = deriv r c
 
-
+testMatch :: Test
+testMatch = TestList [
+   not (match Void "a") ~? "nothing is void",
+   not (match Void "") ~? "really, nothing is void",
+   match Empty "" ~? "accept Empty true",
+   not (match Empty "a") ~? "not accept Empty",
+   match lower "a" ~? "accept lower",
+   not (match lower "A") ~? "not accept lower",
+   match boldHtml "<b>cis552</b>!</b>" ~? "cis552!",
+   not (match boldHtml "<b>cis552</b>!</b") ~? "no trailing" ]
 
 -- (d)
 
 rStar :: RegExp -> RegExp
-rStar (Star x) = Star x   -- two iterations is the same as one
+rStar (Star r) = Star r   -- two iterations is the same as one
 rStar Empty    = Empty    -- iterating the empty string is the empty string
 rStar Void     = Empty    -- zero or more occurrences of void is empty
 rStar r        = Star r   -- no optimization
@@ -165,8 +216,25 @@ instance Arbitrary RegExp where
    shrink = undefined
 
 rSeq :: RegExp -> RegExp -> RegExp
-rSeq = undefined
+rSeq Empty r        = r
+rSeq r Empty        = r
+rSeq Void r         = Void
+rSeq r Void         = Void
+rSeq r1 r2          = Seq r1 r2
+
+prop_rSeq :: RegExp -> Property
+prop_rSeq r = prop_rSeq1 r .&&. prop_rSeq2 r .&&. prop_rSeq3 r .&&. prop_rSeq4 r where
+  prop_rSeq1 r = rSeq Empty r %==% Seq Empty r
+  prop_rSeq2 r = rSeq r Empty %==% Seq r Empty
+  prop_rSeq3 r = rSeq Void r  %==% Seq Void r
+  prop_rSeq4 r = rSeq r Void  %==% Seq r Void
 
 rAlt :: RegExp -> RegExp -> RegExp
-rAlt = undefined
+rAlt Void r  = r
+rAlt r Void  = r
+rAlt r1 r2   = Alt r1 r2
 
+prop_rAlt :: RegExp -> Property
+prop_rAlt r = prop_rAlt1 r .&&. prop_rAlt2 r where
+  prop_rAlt1 r = rAlt Void r %==% Alt Void r
+  prop_rAlt2 r = rAlt r Void %==% Alt r Void

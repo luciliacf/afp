@@ -489,10 +489,10 @@ List comprehensions are very similar to the mathematical concept of
  building sets out of other sets. An example of a simple set
  comprehension is:
  
- ${ 2·x | x \in \mathbb{N}, x ≤ 10 }$ . 
+     { 2·x | x in N, x ≤ 10 } 
 				  
-This statement says, \“take all the natural numbers less than or equal to
- 10, multiply each one by 2, and use these results to create a new set.\”
+This statement says, \"take all the natural numbers less than or equal to
+ 10, multiply each one by 2, and use these results to create a new set.\"
  
  If we wanted to write the same thing in Haskell, we could do
  something like this with list operations: `take 10 [2,4..]`. However,

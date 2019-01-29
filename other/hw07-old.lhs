@@ -8,11 +8,14 @@ date: September 2018
 [avllhs]: AVL.html
 [avlhs]: AVL.hs
 
-In this homework you will implement a simple SAT-solver, following the instructions below.
+This homework assignment is composed of two problems.
 
-Make all of your edits in the files [Sat.hs][saths]. 
+Make all of your edits in the files [Sat.hs][saths] and [AVL.hs][avlhs].
 
 **Problem - A SAT solver**
 
 See [Sat.lhs][satlhs]
 
+**Problem - AVL trees**
+
+See [AVL.lhs][avllhs]

@@ -9,8 +9,6 @@ Since state is a handy thing to have, the Haskell standard library includes a
 [module][1] `Control.Monad.State` that defines a parameterized version of the
 state-transformer monad.  This file is a simplified version of that library.
 
-We will only allow clients to use the functions declared below.
-
 > {-# LANGUAGE InstanceSigs #-}
 
 This module includes an explicit export list.  Only the types and functions

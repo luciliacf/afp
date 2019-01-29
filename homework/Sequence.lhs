@@ -189,17 +189,24 @@ that calculates this cached information for us.
 > branch :: AVL a -> AVL a -> AVL a
 > branch x y = Branch (length x + length y) (1 + max (height x) (height y)) x y
 
-Accessing the height of the tree is also a constant time operation.
+Accessing the height of the tree or its balance factor are also a constant time operations.
 
 > height :: AVL a -> Int
 > height Empty = 0
 > height (Single x) = 0
 > height (Branch _ k s1 s2) = k
 
+> -- the balance factor
+> bf :: AVL a -> Int
+> bf (Branch _ _ l r) = height l - height r
+> bf (Single _) = 0
+> bf Empty = 0
+
 > avlInsert :: Int -> a -> AVL a -> Maybe (AVL a)
 > avlInsert = undefined
 
-This test case checks that the value is inserted at the correct position, but not whether the result is balanced.
+This test case checks that the value is inserted at the correct position,
+but not whether the result is balanced.
 
 > testAvlInsert :: Test
 > testAvlInsert = TestList [
@@ -216,18 +223,19 @@ We\'ll make sure that our trees stay balanced with quickcheck.
 
 Let\'s make some random sequences for testing!
 
-Complete the arbitrary instance, making sure you use the insert function above to construct
-some of the AVLs. Note: if you use Branch your generated sequence may not be balanced.
+Complete the arbitrary instance, making sure you use the `insert` function above to construct
+some of the AVLs. Note: if you use `Branch` your generated sequence may not be balanced.
 We want to only generate balanced trees.
 
 > instance (Show a, Arbitrary a) => Arbitrary (AVL a) where
 >     arbitrary = undefined
 >     shrink _  = undefined
 
-Now we can compare the stored sizes of random lists with ones where we have explicitly counted every branch.
+Now we can compare the stored sizes of random lists with ones where we have explicitly
+counted every branch.
 
 > prop_length :: AVL Int -> Bool
-> prop_length xs = count xs == count xs where
+> prop_length xs = length xs == count xs where
 >    count Empty = 0
 >    count (Single x) = 1
 >    count (Branch j _ l r) = count l + count r
@@ -235,7 +243,7 @@ Now we can compare the stored sizes of random lists with ones where we have expl
 Make sure that the heights are correctly calculated.
 
 > prop_height :: AVL Int -> Bool
-> prop_height xs = count xs == count xs where
+> prop_height xs = height xs == count xs where
 >    count Empty = 0
 >    count (Single x) = 0
 >    count (Branch _ k l r) = 1 + max (height l) (height r)
@@ -247,13 +255,6 @@ And make sure that our sequences stay balanced.
 > prop_balanced (Single x) = True
 > prop_balanced t@(Branch _ _ l r) =
 >      bf t >= -1 && bf t <= 1 && prop_balanced l && prop_balanced r
-
-> -- the balance factor
-
-> bf :: AVL a -> Int
-> bf (Branch _ _ l r) = height l - height r
-> bf (Single _) = 0
-> bf Empty = 0
 
 All three representation invariants together.
 
@@ -391,7 +392,7 @@ values are used for `f`, `s`, `x`, `m`, and `k`.
   toList (return x) == return x
      where x :: a
 
-  toList (m >>= k) == toList m >>= (toList . k)
+  toList (m >>= k) == (toList m >>= (toList . k))
      where m :: AVL a
            k :: a -> AVL b
            

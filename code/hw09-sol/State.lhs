@@ -16,9 +16,6 @@ The type definition for a generic state transformer is very simple:
 
 > newtype State s a = S (s -> (a, s))
 
-
-
-
 It is a parameterized state-transformer monad where the state is
 denoted by type `s` and the return value of the transformer is the
 type `a`. We make the above a monad by declaring it to be an instance
@@ -43,7 +40,7 @@ where the function `runState` (called `apply` in the lecture) is just
 > runState (S f) = f
 
 
-There are also two other was of evaluating the state monad. The first
+There are also two other ways of evaluating the state monad. The first
 only returns the final result,
 
 > evalState :: State s a -> s -> a
@@ -55,9 +52,6 @@ and the second only returns the final state.
 > execState s  = snd . runState s
 
 
-
-
-
 Accessing and Modifying State
 -----------------------------
 
@@ -66,16 +60,13 @@ a `get` and `put` function with which one can *access* and
 *modify* the state. We can easily `get` the *current* state
 via
 
-
 > get :: State s s
 > get = S (\s -> (s, s))
 
-
-
 That is, `get` denotes an action that leaves the state unchanged, but
 returns the state itself as a value. Note that although get *does not*
-have a function type (unless you peek under the covers of State), we
-consider it a monadic "action".
+have a function type (unless you peek under the covers of `State`), we
+consider it a monadic \"action\".
 
 Dually, to *modify* the state to some new value `s'` we can write
 the function
@@ -83,11 +74,9 @@ the function
 > put :: s -> State s ()
 > put s = S (const ((), s))
 
-which denotes an action that ignores (ie blows away) the old state and
+which denotes an action that ignores (i.e\. blows away) the old state and
 replaces it with `s`. Note that the `put s` is an action that itself
 yields nothing (that is, merely the unit value.)
-
-
 
 
 [1]: http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-State-Lazy.html#g:2

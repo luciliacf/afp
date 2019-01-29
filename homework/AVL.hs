@@ -5,7 +5,7 @@ module AVL (Set(..),AVL(..),
             avlEmpty,avlElements,avlMember,avlInsert,avlDelete,
             t1,t2,t3,bad1,bad2,bad3,main,rebalance,height,bf,
             setProperties,prop_empty,prop_elements,prop_insert1,
-            prop_insert2,prop_delete1,prop_delete2,prop_delete3,
+            prop_insert2,prop_delete1,prop_delete2,
             avlProperties,prop_bst,prop_ht,prop_balance) where
 import Prelude hiding (zipWith,zipWith3)
 import Test.QuickCheck hiding (elements)
@@ -27,26 +27,30 @@ instance Set AVL where
 
 -- 1
 
+-- the empty set has no elements
 prop_empty :: Bool
 prop_empty = undefined
 
+-- all elements in the set are distinct
 prop_elements :: AVL Int -> Bool
-prop_elements x = undefined
+prop_elements t = undefined
 
-prop_insert1 :: Int -> AVL Int -> Bool
+-- insetion really inserts the given element and preserves AVL bst and balanced properties
+prop_insert1 :: Int -> AVL Int -> Property
 prop_insert1 x t = undefined
 
-prop_insert2 :: Int -> AVL Int -> Bool
-prop_insert2 x t = undefined
+-- insertion does not remove any element
+prop_insert2 :: Int -> Int -> AVL Int -> Property
+prop_insert2 x y t = undefined
 
-prop_delete1 :: AVL Int -> Bool
-prop_delete1 t = undefined
+-- deletion really delets the given element and preserves AVL bst and balanced properties
+prop_delete1 :: Int -> AVL Int -> Property
+prop_delete1 x t = undefined
 
-prop_delete2 :: AVL Int -> Bool
-prop_delete2 t = undefined
+-- insetion does not remove any element distinct from the given one
+prop_delete2 :: Int -> Int -> AVL Int -> Property
+prop_delete2 x y t = undefined
 
-prop_delete3 :: AVL Int -> Int -> Property
-prop_delete3 t x = undefined
 
 setProperties :: Property
 setProperties =
@@ -55,8 +59,7 @@ setProperties =
   counterexample "insert1" prop_insert1  .&&.
   counterexample "insert2" prop_insert2  .&&.
   counterexample "delete1" prop_delete1  .&&.
-  counterexample "delete2" prop_delete2  .&&.
-  counterexample "delete3" prop_delete3
+  counterexample "delete2" prop_delete2
 
 -- 2
 

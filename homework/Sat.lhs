@@ -4,8 +4,8 @@ author: Lucilia Figueiredo
 ---
 
 [saths]: Sat.hs
-[sat-sol]: ../code/Sat-sol.zip
-[DPLL}: https://en.wikipedia.org/wiki/DPLL_algorithm
+[sat-sol]: ../code/hw07.zip
+[DPLL]: https://en.wikipedia.org/wiki/DPLL_algorithm
 
 For this module, please edit the file [Sat.hs][saths]. A solution for this homework will eventually be
 available [here][sat-sol]. 
@@ -22,7 +22,8 @@ solving you will need to do a little reading about the basic ideas in DPLL.
  * [DPLL Wikipedia page][DPLL]
 
 Throughout, try to use library functions to make your code short and elegant.
-None of the requested function bodies should take much more than a dozen or so lines. Style counts!
+None of the requested function bodies should take much more than a dozen or so lines.
+Style counts!
 
 > {-# OPTIONS -fwarn-incomplete-patterns -fwarn-tabs -fno-warn-type-defaults -fno-warn-orphans #-}
 > module Sat where
@@ -56,12 +57,13 @@ Finally, import definitions for QuickCheck.
 If you don\'t yet have the QuickCheck library installed on your machine, start by doing this:
 
    cabal install quickcheck
-> ---------------------------------------------------------------------------
-> -- Basic types
 
-The DPLL algorithm works on formulae that are in Conjunctive Normal Form (CNF), i.e.
+Basic types
+------------
+
+The DPLL algorithm works on formulae that are in Conjunctive Normal Form (CNF), i.e\.
 formulae that consist of a conjunction of clauses, where each clause is a disjunction of
-literals, i.e. positive or negative propositional variables. For example,
+literals, i.e\. positive or negative propositional variables. For example,
 
      (A \/ B \/ C) /\ (not A) /\ (not B \/ C)
 
@@ -173,7 +175,7 @@ efficiency of certain solvers and also the distribution of satisfiable random fo
 > genCNF      :: Int -> Gen CNF
 > genCNF     n = Conj <$> listOf (genClause n)
 
-We use these generators in our Arbitrary instances.
+We use these generators in our `Arbitrary` instances.
 
 > defaultNumVariables :: Int
 > defaultNumVariables = 5
@@ -196,8 +198,9 @@ We use these generators in our Arbitrary instances.
 >    arbitrary = fmap Conj arbitrary
 >    shrink (Conj x) = [Conj x' | x' <- shrink x]
 
->-----------------------------------------------------
->-- Satisfiable and unsatisfiable formulae
+
+Satisfiable and unsatisfiable formulae
+---------------------------------------
 
 Our example formula is said to be satisfiable because it is possible to find an
 assignment of truth values to variables \-\- namely
@@ -206,7 +209,7 @@ assignment of truth values to variables \-\- namely
      B |-> True
      C |-> True
 
--- that makes the example formula true. On the other hand, this formula
+\-\- that makes the example formula true. On the other hand, this formula
 
 > unSatFormula :: CNF
 > unSatFormula = Conj [Clause [Lit True vA], Clause [Lit False vA]]
@@ -243,7 +246,8 @@ We say that a CNF formula is satisfied by a valuation if the valuation makes the
 Take a moment to look at the definition of `satisfiedBy` and consider the following two formulae:
 
 This first formula is a conjunction of zero clauses, all of which must be satisfied
-for the formula to be true. So this formula will be satisfied by any valuation, including the empty one.
+for the formula to be true. So this formula will be satisfied by any valuation,
+including the empty one.
 
 > validFormula :: CNF
 > validFormula = Conj []
@@ -284,8 +288,8 @@ module. (These definitions are short).
 > value = undefined
 
 
-> ---------------------------------------------------------------------------
-> -- Simple SAT Solver
+Simple SAT Solver
+-------------------
 
 A solver is a function that finds a satisfying valuations for a given formula (assuming one exists).
 
@@ -301,7 +305,7 @@ valuations for the given variables.
 > makeValuations = undefined
 
 To test your implementation, QuickCheck the following property stating that `makeValuations`
-is correct, in the sense that it has the right length (2^n, where n is the number of variables
+is correct, in the sense that it has the right length ($2^n$, where n is the number of variables
 in the set) and all its elements are distinct.
 
 > prop_makeValuations :: CNF -> Bool
@@ -347,8 +351,9 @@ then that formula is unsatisfiable. We say that a solver is correct if it is bot
 
 This property will always be expensive to test, so we separate full correctness from soundness.
 
-> ---------------------------------------------------------------------------
-> -- Instantiation
+
+Instantiation
+--------------
 
 In the remainder of this section, we will gradually build up to an implementation of DPLL.
 
@@ -362,8 +367,8 @@ For instance, imagine we have the CNF formula
 
       (A \/ not B) /\ (not A \/ B \/ C)
       
-If we instantiate A to True, then the formula becomes (True \/ not B) /\ (False \/ B \/ C),
-which can be simplified to (B \/ C).
+If we instantiate A to True, then the formula becomes `(True \/ not B) /\ (False \/ B \/ C)`,
+which can be simplified to `(B \/ C)`.
 
 Please implement the instantiate function:
 
@@ -400,8 +405,9 @@ plus this one (and any others that you can think of).
 > prop_sat1 :: CNF -> Bool
 > prop_sat1 s = isJust (sat1 s) == isJust (sat0 s)
 
-> ---------------------------------------------------------------------------
-> -- Unit propagation
+
+Unit propagation
+-----------------
 
 The first significant optimization performed by DPLL is simplifying unit clauses.
 Please see the Wikipedia page for a general sense of how it should work.
@@ -410,11 +416,11 @@ The signature of the unit clause simplifier is this:
 
 > simplifyUnitClause :: CNF -> Maybe (CNF, Var, Bool)
 
-It should take a formula, choose a unit clause (or return Nothing if there aren't any),
+It should take a formula, choose a unit clause (or return `Nothing` if there aren\'t any),
 and simplify it, returning the simplified formula together with the variable that was
 instantiated away in the process and the value that it was given.
 
-This time, let's start by writing down the correctness property for `simplifyUnitClause`:
+This time, let\'s start by writing down the correctness property for `simplifyUnitClause`:
 
 > -- 1) If (simplifyUnitClause s) returns Nothing, then there
 > --    are no remaining unit clauses in s.
@@ -461,8 +467,9 @@ plus this one:
 > prop_sat2 :: CNF -> Bool
 > prop_sat2 s = isJust (sat2 s) == isJust (sat0 s)
 
-> ---------------------------------------------------------------------------
-> -- Pure literal elimination
+
+Pure literal elimination
+--------------------------
 
 The next (and last) significant optimization is simplifying pure literals.
 Again, please see the Wikipedia page for how this works.
@@ -503,14 +510,15 @@ This brings us to the final DPLL algorithm, inserting a new step in `sat2`:
 > dpll = sat where
 >   sat = undefined
 
-To check that it works, QuickCheck the property `prop_satResultSound dpll`, `prop_satResultSound dpll`,
-plus this one:
+To check that it works, QuickCheck the property `prop_satResultSound dpll`,
+`prop_satResultSound dpll`, plus this one:
 
 > prop_dpll :: CNF -> Bool
 > prop_dpll s = isJust (dpll s) == isJust (sat0 s)
 
-> ------------------------------------------------------------------------------
-> -- All the tests in one convenient place:
+
+All the tests in one convenient place
+---------------------------------------
 
 > quickCheckN :: Testable prop => Int -> prop -> IO ()
 > quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n }

@@ -4,6 +4,8 @@ module Main where
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import Data.Maybe
+
 import Text.PrettyPrint (Doc)
 import qualified Text.PrettyPrint as PP
 
@@ -32,7 +34,6 @@ data Statement =
   | If Expression Block Block           -- if e then s1 else s2
   | While Expression Block              -- while e do s
   deriving (Eq, Show)
-
 
 
 data Expression =
@@ -98,26 +99,48 @@ wTimes = Block [Assign "x" (Val (IntVal 10)),
 
 -------------------------------------------------------------------------
 
+
+evalOp :: Value -> Bop -> Value -> Value
+evalOp (IntVal x) op (IntVal y)  =
+   case op of
+      Plus   -> IntVal (x + y)
+      Minus  -> IntVal (x - y)
+      Times  -> IntVal (x * y)
+      Divide -> IntVal (x `div` y)
+      Gt     -> BoolVal (x > y)
+      Ge     -> BoolVal (x >= y)
+      Lt     -> BoolVal (x < y)
+      Le     -> BoolVal (x <= y)
+evalOp _  _  _  = IntVal 0
+
 evalE :: Expression -> State Store Value
-
-evalE (Var _)    = error "evalE: unimplemented"
-evalE (Val _)    = error "evalE: unimplemented"
-evalE (Op _ _ _) = error "evalE: unimplemented"
- 
-
+evalE (Var v)       = do {s <- S.get; return (fromMaybe (IntVal 0) (Map.lookup v s)) }
+evalE (Val x)       = do {return x}
+evalE (Op e1 op e2) = do { v1 <- evalE e1; v2 <- evalE e2; return (evalOp v1 op v2)} 
 
 
 evalS :: Statement -> State Store ()
 
-evalS (While _ _)      = error "evalS: unimplemented"
-evalS (Assign _ _)     = error "evalS: unimplemented"
-evalS (If _ _ _)       = error "evalS: unimplemented"
+evalS sw@(While e st) = do val <- evalE e
+                           case val of
+                             (BoolVal True) -> do {eval st; evalS sw }
+                             _              -> return ()
+evalS (Assign v e)    = do s <- S.get
+                           val <- evalE e
+                           () <- S.put (Map.insert v val s)
+                           return ()
+evalS (If e st1 st2)  = do val <- evalE e
+                           case val of
+                             (BoolVal True)  -> eval st1
+                             (BoolVal False) -> eval st2
+                             _               -> return ()
 
 eval :: Block -> State Store ()
-eval (Block _)        = error "eval: unimplemented"
+eval (Block [])         = return ()
+eval (Block (stm:stms)) = do { evalS stm; eval (Block stms) }
 
 exec :: Block -> Store -> Store
-exec = error "exec: unimplemented"
+exec block store = S.execState (eval block) store
 
 run :: Block -> IO ()
 run block = do putStrLn "Output Store:"
@@ -145,16 +168,35 @@ indented :: PP a => a -> String
 indented = PP.render . pp
 
 instance PP Value where
-  pp _ = error "TBD: pretty printing values"
+   pp (IntVal n)      = PP.int n 
+   pp (BoolVal True)  = PP.text "true"
+   pp (BoolVal False) = PP.text "false"
 
 instance PP Expression where
-  pp _ = error "TBD: pretty printing expressions"
+   pp (Var var)      = PP.text var
+   pp (Val val)      = pp val                   
+   pp (Op e1 bop e2) = let {l1 = levelE e1; l2 = levelE e2; l = level bop;
+                            d1 = if l1 < l && l1 /= 0 then PP.parens (pp e1) else pp e1;
+                            d2 = if l2 <= l && l2 /= 0 then PP.parens (pp e2) else pp e2 }
+                       in d1 PP.<+> pp bop PP.<+> d2                                      
 
 instance PP Block where
-  pp _ = error "TBD: pretty printing blocks"
+  pp (Block [])   = PP.empty 
+  pp (Block stms) = PP.sep (map pp stms)
+
+bracedD :: Doc -> Doc
+bracedD d = if PP.isEmpty d then PP.lbrace PP.$+$ PP.nest (-PP.lineLength PP.style) PP.rbrace
+            else PP.braces (PP.space PP.<> PP.nest 2 d PP.<> PP.space)
 
 instance PP Statement where
-  pp _ = error "TBD: pretty printing statements"
+  pp (Assign var e) = (PP.text var PP.<+> PP.char '=' PP.<+> pp e) <> PP.semi
+  pp (If e bl1 bl2) = PP.text "if" PP.<+> PP.parens (pp e) PP.<+> bracedD (pp bl1) 
+                      PP.<+> PP.text "else" PP.<+> bracedD (pp bl2) 
+  pp (While e bl)   = PP.text "while" PP.<+> PP.parens (pp e) PP.<+> bracedD (pp bl)  
+
+levelE :: Expression -> Int
+levelE (Op _ bop _) = level bop
+levelE _            = 0
 
 -- use the C++ precendence level table
 level :: Bop -> Int
@@ -167,7 +209,25 @@ level _      = 3    -- comparison operators
 ------------------------------------------------------------------------
 
 step :: Block -> State Store Block
-step _ = undefined
+step (Block (stm@(Assign v e):stms)) = do {evalS stm; return (Block stms) } 
+step (Block ((If e bl1 bl2):stms))   = do s <- S.get
+                                          let (val,s') = S.runState (evalE e) s
+                                          case val of
+                                            (BoolVal True)  -> do let (Block stms1) = bl1
+                                                                  return (Block (stms1++stms))
+                                            (BoolVal False) -> do let (Block stms2) = bl2
+                                                                  return (Block (stms2++stms))
+                                            _               -> return (Block [])
+step (Block (sw@(While e bl):stms)) = do s <- S.get
+                                         let (val,s') = S.runState (evalE e) s
+                                         case val of
+                                            (BoolVal True)  -> do let (Block stms') = bl
+                                                                  return (Block (stms'++[sw]++stms))
+                                            (BoolVal False) -> return (Block stms)
+                                            _               -> return (Block [])
+step bl                              = return bl
+
+
 
 -- | Is this block completely evaluated?
 final :: Block -> Bool
@@ -176,11 +236,17 @@ final _          = False
 
 -- | Evaluate this block to completion
 execStep :: Block -> Store -> Store
-execStep = undefined
+execStep bl s = if final bl then s else sf
+                where sf = execStep bl' s'
+                      (bl',s') = S.runState (step bl) s 
 
 -- | Evaluate this block for a specified number of steps
 boundedStep :: Int -> Block -> State Store Block
-boundedStep = undefined
+boundedStep n bl@(Block []) = do {s <- S.get; return bl}
+boundedStep 0 bl            = return bl
+boundedStep n bl            = do s <- S.get
+                                 let (bl',s') = S.runState (step bl) s
+                                 return (S.evalState (boundedStep (n-1) bl') s')   
 
 stepper :: Block -> IO ()
 stepper b = go b where

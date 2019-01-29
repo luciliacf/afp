@@ -4,7 +4,7 @@ author: Lucilia Figueiredo
 ---
 
 [regexphs]: RegExp.hs
-[regexp-sol]: ../code/RegExp.zip
+[regexp-sol]: ../code/hw08.zip
 
 Download the plain-Haskell version of the file [RegExp][regexphs] and answer each question,
 filling in code as appropriate. A solution to this problem will eventually be available [here][regexp-sol]
@@ -29,8 +29,8 @@ filling in code as appropriate. A solution to this problem will eventually be av
 
 Regular expressions are a specialized language for representing string-matching patterns.
 Regular expressions were invented by the mathematician
-[Stephen Kleene](https://en.wikipedia.org/wiki/Stephen_Cole_Kleene), one of the pioneers that
-created the foundations of the theory of computation (with Goedel, Turing, Church, and Post).
+[Stephen Kleene](https://en.wikipedia.org/wiki/Stephen_Cole_Kleene), one of the pioneers
+that created the foundations of the theory of computation (with Goedel, Turing, Church, and Post).
 Kleene invented regular expressions to represent the sets of possible behaviors of the abstract
 finite computation devices called finite-state machines. In Kleene\'s original formulation, regular
 expressions were were built from individual letters with three operators: concatenation, representing
@@ -40,16 +40,18 @@ repetitions of a pattern. By convention, the empty string represents a special r
 the empty regular expression, which matches the empty string.
 
 For example, the regular expression `a(bc|d)*e` matches all strings that start with `a`, then have
-some number of `bc` or `d` characters (possibly none), and end with `e`. Some such strings include `ae`,
-`abce`, `abcde`, `adbcde`, `abcbcdbce`. In the 1970s, computer scientists at Bell Labs were working on
-the first software tools for text processing, and they adapted and generalized Kleene\'s idea in several
-software tools, starting with [grep](https://en.wikipedia.org/wiki/Grep), for searching and editing text.
+some number of `bc` or `d` characters (possibly none), and end with `e`. Some such strings
+include `ae`, `abce`, `abcde`, `adbcde`, `abcbcdbce`. In the 1970s, computer scientists at
+Bell Labs were working on the first software tools for text processing, and they adapted and
+generalized Kleene\'s idea in several software tools, starting with
+[grep](https://en.wikipedia.org/wiki/Grep), for searching and editing text.
 Regular expressions have many practical uses, mainly in pattern matching, which has applications in
 everything from compilers to
 searching databases.
 
 In this problem, we consider regular expression evaluators, that is, programs that determine whether
-a string is in the language denoted by the regular expression. This process is also called regular expression matching.
+a string is in the language denoted by the regular expression.
+This process is also called regular expression matching.
 
 We can represent regular expressions using the following datatype in Haskell.
 
@@ -65,8 +67,8 @@ We can represent regular expressions using the following datatype in Haskell.
 Note that the `[Char]` constructor takes a set of characters as argument. It matches any single
 character from this set.
 
-While doing the exercise, you may find useful to implement your own instance of the `[Show]` class for
-`[RegExp]`s instead of using the one that arising from the deriving annotation above. (In particular,
+While doing the exercise, you may find useful to implement your own instance of the `Show` class for
+`RegExp`s instead of using the one that arising from the deriving annotation above. (In particular,
 you might want to print the set of characters associated with a Char in a more compact form than the
 one given by the default show instance for `Set`.)
 
@@ -89,7 +91,8 @@ Or the union of all of the above classes:
 
 > anyc'  = lower `Alt` upper `Alt` digit `Alt` punc `Alt` white
 
-A more convenient definition (for debugging purposes, since it will print more compactly) is the following:
+A more convenient definition (for debugging purposes, since it will print more compactly)
+is the following:
 
 > anyc = chars $ ['a' .. 'z']
 >                ++ ['A' .. 'Z']
@@ -109,7 +112,7 @@ Or we can define regular expressions that match specific words.
 > afp :: RegExp
 > afp = word "afp"
 
-The `Star`operator corresponds to 0 or more occurrences of a pattern. For example, this
+The `Star` operator corresponds to 0 or more occurrences of a pattern. For example, this
 regular expression accepts any string that begins and ends with the tags <b> and </b>.
 
 > boldHtml :: RegExp
@@ -125,7 +128,7 @@ occurrences of a pattern.
 
 First, we\'ll write a straightforward (and probably inefficient) operation that determines whether
 a particular string is part of the regular language accepted by the given regular expression.
-(For now, just ignore 'Mark' constructors in the input regular expressions.)
+(For now, just ignore `Mark` constructors in the input regular expressions.)
 
 Begin by implementing the following two helper functions. (You may find that the list monad
 is useful for defining and using these functions.)
@@ -134,6 +137,7 @@ is useful for defining and using these functions.)
 > --     split "abc" == [("","abc"),("a","bc"),("ab","c"),("abc","")]
 > split :: [a] -> [([a], [a])]
 > split = error "split: unimplemented"
+    
 
 > -- all decompositions of a string into multi-part (nonempty) pieces
 > -- parts "abc" = [["abc"],["a","bc"], ["ab","c"], ["a","b","c"]]
@@ -184,6 +188,9 @@ Or mark any number of sequences of lowercase letters:
 > wordsPat :: RegExp
 > wordsPat = Star (Mark "word" (plus lower) `Seq` Star white)
 
+> nestedPat :: RegExp
+> nestedPat = Mark "word" ((plus lower) `Seq` (Mark "b" (char 'b')) `Seq` (plus lower))
+
 Then, `patAccept` below returns not only whether the pattern matches, but also the parts
 of the string that correspond to the marks (in order).
 
@@ -197,7 +204,9 @@ of the string that correspond to the marks (in order).
 >     patAccept namePat "Haskell  Curry" ~?=
 >         Just (Map.fromList [("first",["Haskell"]),("last",["Curry"])]),
 >     patAccept wordsPat "a    b c   d e" ~?=
->         Just (Map.fromList [("word",["a","b","c","d","e"])])
+>         Just (Map.fromList [("word",["a","b","c","d","e"])]),
+>     patAccept nestedPat "acdbef" ~?=
+>         Just (Map.fromList [("b", ["b"]),("word",["acdbef"])])
 >   ]
 
 > type Match = Map String [String]
@@ -216,7 +225,7 @@ expression into a finite-state machine and then apply the finite-state matching 
 However, there\'s a more direct, elegant, but not so well-known alternative, the method of
 derivatives due to [Janusz A. Brzozowski](http://maveric.uwaterloo.ca/~brzozo/).
 This method is described in more detail
-[here](http://blog.sigfpe.com/2005/05/derivatives-of-regular-expressions.html).
+[here](https://en.wikipedia.org/wiki/Brzozowski_derivative) and [here](http://www.ccs.neu.edu/home/turon/re-deriv.pdf)
 
 The basic idea is that, given a regular expression and the first character in the input
 string to match, you can compute a new regular expressions, which must match the remaining
@@ -252,9 +261,20 @@ consumed by the second regexp.
 Note that Haskell\'s lazy evaluation avoids the evaluation of the whole regular expression.
 The expression has only to be evaluated as much as nullable needs to calculate an answer.
 
+> testMatch :: Test
+> testMatch = TestList [
+>    not (match Void "a") ~? "nothing is void",
+>    not (match Void "") ~? "really, nothing is void",
+>    match Empty "" ~? "accept Empty true",
+>    not (match Empty "a") ~? "not accept Empty",
+>    match lower "a" ~? "accept lower",
+>    not (match lower "A") ~? "not accept lower",
+>    match boldHtml "<b>cis552</b>!</b>" ~? "cis552!",
+>    not (match boldHtml "<b>cis552</b>!</b") ~? "no trailing" ]
+
 > -- (d)
 
-We can optimize our match function even further through the use of "smart constructors" for the
+We can optimize our match function even further through the use of \"smart constructors\" for the
 regular expression type. These smart constructor recognize simplifications that can be made
 when ever a regular expression is put together.
 
@@ -268,7 +288,7 @@ We can quickCheck our optimizations using accept. In each of our three optimizat
 the rhs and lhs of the definition above should accept the same strings.
 
 We\'ll define this as a property, testing the regexps on strings that contain arbitrary
-sequences of a's, b's, c's, and d's.
+sequences of a\'s, b\'s, c\'s, and d\'s.
 
 > (%==%) :: RegExp -> RegExp -> Property
 > r1 %==% r2 = forAll (resize 10 (listOf (elements "abcd"))) $
@@ -281,7 +301,7 @@ sequences of a's, b's, c's, and d's.
 >   prop_rStar3   = rStar Void     %==% Star Empty
 
 Complete an `Arbitrary` instance for regular expressions to test this property above.
-Your regexps should only contain the characters "abcd" and need not contained marked subexpressions.
+Your regexps should only contain the characters \"abcd\" and need not contained marked subexpressions.
 
 > instance Arbitrary RegExp where
 >    arbitrary = undefined
@@ -296,3 +316,4 @@ Now design and test optimizations for sequencing and alternation:
 > rAlt = undefined
 
 Finally, modify your definition of match above to take advantage of these optimizations.
+

@@ -17,7 +17,7 @@ Set-up
 In this lecture, we\'ll continue our study of monads via examples of
 *specific* monads to try to understand how they work. At this point,
 don\'t panic if you don\'t understand the big picture: each of the
-specific instances is useful in its own right. .
+specific instances is useful in its own right.
 
 > {-# LANGUAGE InstanceSigs #-}
 > module Monads2 where

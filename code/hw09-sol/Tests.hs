@@ -135,7 +135,8 @@ tPrec = "pp prec" ~: TestList [
       oneLine (Op oneV Times (Op twoV Plus threeV)) ~?= "1 * (2 + 3)",
       oneLine (Op (Op oneV Plus twoV) Times threeV) ~?= "(1 + 2) * 3",
       oneLine (Op oneV Plus (Op twoV Times threeV)) ~?= "1 + 2 * 3",
-      oneLine (Op (Op oneV Times twoV) Plus threeV) ~?= "1 * 2 + 3"]
+      oneLine (Op (Op oneV Times twoV) Plus threeV) ~?= "1 * 2 + 3",
+      oneLine (Op (Op oneV Plus twoV) Times (Op threeV Plus twoV)) ~?= "(1 + 2) * (3 + 2)" ]
 
 -- Add your own test cases for the pretty printer here
 
